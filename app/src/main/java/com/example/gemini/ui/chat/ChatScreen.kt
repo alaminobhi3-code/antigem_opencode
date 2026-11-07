@@ -160,6 +160,8 @@ fun ChatScreen(
     val currentConv by viewModel.currentConversation.collectAsState()
     val newChatAgent by viewModel.newChatAgent.collectAsState()
     val isClaudeChat = currentConv?.agent == com.example.gemini.domain.model.AgentKind.CLAUDE
+    val isOpenCodeChat = currentConv?.agent == com.example.gemini.domain.model.AgentKind.OPENCODE
+    val isNonAgyChat = isClaudeChat || isOpenCodeChat
     val isFreshNewChat = currentConv == null || currentConv?.title == "New Chat"
     val claudeBackend = viewModel.claudeBackend
     val claudePending by claudeBackend.pendingPermissions.collectAsState()
@@ -1458,7 +1460,7 @@ fun ChatScreen(
                     val isExistingChat = messages.isEmpty() && isExistingConversation && isLoadingConversation
                     Log.d("CHAT_OPEN_DEBUG", "🖥️ [ChatScreen Render] convId=${currentConv?.id}, title='${currentConv?.title}', isLoading=$isLoadingConversation, isExisting=$isExistingChat, msgCount=${messages.size}, error=$conversationError, isServerStopped=$isServerStopped")
 
-                    if (!isClaudeChat && isServerStopped && messages.isEmpty()) {
+                    if (!isNonAgyChat && isServerStopped && messages.isEmpty()) {
                         BoxWithConstraints(
                             modifier = Modifier.fillMaxSize()
                         ) {
@@ -1484,7 +1486,7 @@ fun ChatScreen(
                                 com.example.gemini.ui.components.ServerStoppedPromptCard()
                             }
                         }
-                    } else if (!isClaudeChat && isServerInitializing && messages.isEmpty()) {
+                    } else if (!isNonAgyChat && isServerInitializing && messages.isEmpty()) {
                         com.example.gemini.ui.components.EngineWarmingUpView()
                     } else if (!conversationError.isNullOrBlank() && messages.isEmpty() && (isExistingConversation || currentConv != null)) {
                         Column(
@@ -2173,9 +2175,9 @@ fun ChatScreen(
 
                 // Chat Input Bar with Bottom Model & Thinking Selector Pills (Claude Android Style)
                 ChatInputBar(
-                    isOnline = if (isClaudeChat) !claudeState.isBlocking else systemConnectionState.canSend,
-                    isAuth = if (isClaudeChat) claudeChatState != com.example.gemini.data.agent.claude.ClaudeStatus.SIGNED_OUT && claudeChatState != com.example.gemini.data.agent.claude.ClaudeStatus.SIGNING_IN else systemConnectionState.isAuth,
-                    offlineMessage = if (isClaudeChat) when (claudeState) {
+                    isOnline = if (isOpenCodeChat) true else if (isClaudeChat) !claudeState.isBlocking else systemConnectionState.canSend,
+                    isAuth = if (isOpenCodeChat) true else if (isClaudeChat) claudeChatState != com.example.gemini.data.agent.claude.ClaudeStatus.SIGNED_OUT && claudeChatState != com.example.gemini.data.agent.claude.ClaudeStatus.SIGNING_IN else systemConnectionState.isAuth,
+                    offlineMessage = if (isOpenCodeChat) "" else if (isClaudeChat) when (claudeState) {
                         com.example.gemini.data.agent.claude.ClaudeStatus.NOT_INSTALLED -> "Claude Code is not installed. Set it up in Settings."
                         com.example.gemini.data.agent.claude.ClaudeStatus.BRIDGE_OUTDATED -> "Restart the local server to use Claude Code."
                         else -> "The local server is offline. Start it to send messages."

@@ -56,7 +56,9 @@ class OpenCodeChatBackend(
             agent = AgentKind.OPENCODE
         )
         _currentConversation.value = newConv
+        store.currentConversation.value = newConv
         _messages.value = emptyList()
+        store.messages.value = emptyList()
         _conversations.value = listOf(newConv) + _conversations.value.filter { it.id != id }
     }
 
@@ -64,6 +66,7 @@ class OpenCodeChatBackend(
         val found = _conversations.value.find { it.id == id }
         if (found != null) {
             _currentConversation.value = found
+            store.currentConversation.value = found
         }
     }
 
@@ -91,7 +94,9 @@ class OpenCodeChatBackend(
             content = "Thinking...",
             createdAt = System.currentTimeMillis()
         )
-        _messages.value = _messages.value + assistantMsg
+        val updatedList = _messages.value + assistantMsg
+        _messages.value = updatedList
+        store.messages.value = updatedList
         _isStreaming.value = true
 
         scope.launch {
@@ -139,9 +144,11 @@ class OpenCodeChatBackend(
     }
 
     private fun updateAssistantMessage(id: String, newContent: String) {
-        _messages.value = _messages.value.map { msg ->
+        val updated = _messages.value.map { msg ->
             if (msg.id == id) msg.copy(content = newContent) else msg
         }
+        _messages.value = updated
+        store.messages.value = updated
     }
 
     override fun stopStreaming() {

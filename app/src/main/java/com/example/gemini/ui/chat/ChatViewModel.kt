@@ -107,7 +107,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val before = enabledAgents.value
         val firstChoice = !hasChosenAgents.value
         agentPrefs.setEnabled(agents)
-        if (newChatAgent.value !in agents) claudePrefs.setNewChatAgent(if (AgentKind.AGY in agents) AgentKind.AGY else agents.first())
+        if (newChatAgent.value !in agents) {
+            val defaultAgent = when {
+                AgentKind.OPENCODE in agents && agents.size == 1 -> AgentKind.OPENCODE
+                AgentKind.AGY in agents -> AgentKind.AGY
+                else -> agents.first()
+            }
+            claudePrefs.setNewChatAgent(defaultAgent)
+        }
         if (AgentKind.CLAUDE in agents) {
             claudeBackend.start()
             claudeAccount.refreshStatus()
@@ -136,9 +143,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val noQuotas = MutableStateFlow<List<ModelQuota>>(emptyList())
     private val alwaysFalse = MutableStateFlow(false)
 
-    private fun <T> byAgent(agy: StateFlow<T>, claude: StateFlow<T>): StateFlow<T> =
-        combine(store.currentConversation, agy, claude) { conv, a, c -> if (conv?.agent == AgentKind.CLAUDE) c else a }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, agy.value)
+    private val opencodeDefaultModels = MutableStateFlow(listOf(
+        com.example.gemini.domain.model.AiModel(id = "opencode-default", displayName = "OpenCode")
+    ))
+    private val opencodeDefaultModelId = MutableStateFlow("opencode-default")
+
+    private fun <T> byAgent(agy: StateFlow<T>, claude: StateFlow<T>, opencode: StateFlow<T>? = null): StateFlow<T> =
+        combine(store.currentConversation, agy, claude) { conv, a, c ->
+            when (conv?.agent) {
+                AgentKind.CLAUDE -> c
+                AgentKind.OPENCODE -> opencode?.value ?: a
+                else -> a
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, agy.value)
 
     private fun isoUtc(epochSeconds: Long): String =
         java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
@@ -171,12 +188,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val isConversationsLoading = agyBackend.isConversationsLoading
     val artifacts = agyBackend.artifacts
     val pendingApprovals = agyBackend.pendingApprovals
-    val isStreaming = byAgent(agyBackend.isStreaming, claudeBackend.isStreaming)
-    val availableModels = byAgent(agyBackend.availableModels, claudeBackend.availableModels)
+    val isStreaming = byAgent(agyBackend.isStreaming, claudeBackend.isStreaming, opencodeBackend.isStreaming)
+    val availableModels = byAgent(agyBackend.availableModels, claudeBackend.availableModels, opencodeDefaultModels)
     val enabledModelIds = agyBackend.enabledModelIds
-    val enabledModels = byAgent(agyBackend.enabledModels, claudeBackend.availableModels)
-    val isRefreshingModels = byAgent(agyBackend.isRefreshingModels, claudeBackend.isRefreshingModels)
-    val selectedModelId = byAgent(agyBackend.selectedModelId, claudeBackend.selectedModelId)
+    val enabledModels = byAgent(agyBackend.enabledModels, claudeBackend.availableModels, opencodeDefaultModels)
+    val isRefreshingModels = byAgent(agyBackend.isRefreshingModels, claudeBackend.isRefreshingModels, alwaysFalse)
+    val selectedModelId = byAgent(agyBackend.selectedModelId, claudeBackend.selectedModelId, opencodeDefaultModelId)
     val preferredModelName = agyBackend.preferredModelName
     /** Claude's plan windows as the model pill's quota (remaining share of the 5-hour and weekly limits). */
     private val claudeQuotas: StateFlow<List<ModelQuota>> =
@@ -234,7 +251,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     ) { agy, claudeTurn, claudeChats, jarvis, tasks ->
         agy || claudeTurn || claudeChats.any { it.isRunning } || jarvis || tasks
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
-    val isCurrentChatActivelyRunning = byAgent(agyBackend.isCurrentChatActivelyRunning, claudeBackend.isCurrentChatActivelyRunning)
+    val isCurrentChatActivelyRunning = byAgent(agyBackend.isCurrentChatActivelyRunning, claudeBackend.isCurrentChatActivelyRunning, opencodeBackend.isStreaming)
     val isCurrentChatBackgroundActive = byAgent(agyBackend.isCurrentChatBackgroundActive, alwaysFalse)
     val connectionState = agyBackend.connectionState
     fun refreshActiveInstances() = agyBackend.refreshActiveInstances()
@@ -256,7 +273,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     fun onUserStartedTyping() = agyBackend.onUserStartedTyping()
     fun startNewChat() = startNewChat(
         newChatAgent.value.takeIf { it in enabledAgents.value }
-            ?: if (AgentKind.AGY in enabledAgents.value) AgentKind.AGY else AgentKind.CLAUDE
+            ?: enabledAgents.value.firstOrNull()
+            ?: AgentKind.OPENCODE
     )
 
     /** New chat with [agent] (e.g. `/clear` in a Claude chat), without changing the new-chat default. */
@@ -429,9 +447,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _conversations = store.conversations
     /** Every conversation of the enabled agents, Jarvis' own chats included. */
-    val allConversations: StateFlow<List<Conversation>> = combine(_conversations, claudeBackend.conversations, enabledAgents) { agy, claude, enabled ->
+    val allConversations: StateFlow<List<Conversation>> = combine(_conversations, claudeBackend.conversations, opencodeBackend.conversations, enabledAgents) { agy, claude, opencode, enabled ->
         // a disabled agent's chats stay on disk but are not listed
-        ((if (AgentKind.AGY in enabled) agy else emptyList()) + (if (AgentKind.CLAUDE in enabled) claude else emptyList()))
+        ((if (AgentKind.AGY in enabled) agy else emptyList()) + 
+         (if (AgentKind.CLAUDE in enabled) claude else emptyList()) +
+         (if (AgentKind.OPENCODE in enabled) opencode else emptyList()))
             .sortedByDescending { it.updatedAt }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -474,7 +494,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     /** Antigravity's chat state (shared store); Claude Code keeps its own, see [messages]. */
     private val _messages = store.messages
     /** Messages of the chat on screen, from the agent that owns it. */
-    val messages: StateFlow<List<ChatMessage>> = byAgent(_messages, claudeBackend.messages)
+    val messages: StateFlow<List<ChatMessage>> = byAgent(_messages, claudeBackend.messages, opencodeBackend.messages)
 
     private val _thinkingPreference = MutableStateFlow(com.example.gemini.domain.model.ThinkingPreference())
     val thinkingPreference: StateFlow<com.example.gemini.domain.model.ThinkingPreference> = _thinkingPreference.asStateFlow()
