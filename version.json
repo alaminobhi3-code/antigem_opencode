@@ -1,11 +1,11 @@
 {
-  "version_code": 119,
-  "version_name": "1.0.19",
+  "version_code": 120,
+  "version_name": "1.0.20",
   "min_supported_version_code": 1,
   "changelog": [
-    "Added notes and todos in the app(see in floating one) and its mcp",
-    "Fix bug of copying on expand of code causing crash",
-    "Added video better preview support"
+    "Added OpenCode as native 3rd agent mode (AndCode engine style)",
+    "Direct local OpenCode process integration without cloud proxy",
+    "OpenCode status UI and accent theming in AgentPicker"
   ],
   "is_critical": false
 }
