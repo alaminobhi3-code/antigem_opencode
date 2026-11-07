@@ -1422,6 +1422,9 @@ object JarvisController {
                     }
                 }
             }
+            AgentKind.OPENCODE -> {
+                // OpenCode uses CLI default/configured model
+            }
         }
     }
 
@@ -1442,6 +1445,10 @@ object JarvisController {
                 "Stopped."
             }
             AgentKind.AGY -> hub.cancelCascadeInvocation(id).fold({ "Stopped." }, { "Could not stop: ${it.message}" })
+            AgentKind.OPENCODE -> {
+                vm.opencodeBackend.stopStreaming()
+                "Stopped."
+            }
         }
     }
 
@@ -1452,6 +1459,7 @@ object JarvisController {
             val steps = hub.getCascadeTrajectorySteps(id).getOrNull().orEmpty()
             com.example.gemini.domain.chat.TrajectoryEngine().ingestStepsDirect(steps, id)
         }
+        AgentKind.OPENCODE -> vm.opencodeBackend.messages.value
     }
 
     // ------------------------------------------------------------------ speaking and asking

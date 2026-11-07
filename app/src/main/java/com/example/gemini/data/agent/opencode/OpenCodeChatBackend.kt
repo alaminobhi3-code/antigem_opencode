@@ -4,8 +4,9 @@ import android.content.Context
 import com.example.gemini.data.agent.AgentChatBackend
 import com.example.gemini.domain.model.AgentKind
 import com.example.gemini.domain.model.ChatMessage
+import com.example.gemini.domain.model.MessageRole
 import com.example.gemini.domain.model.Conversation
-import com.example.gemini.data.ChatSessionStore
+import com.example.gemini.data.agent.ChatSessionStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,18 +76,20 @@ class OpenCodeChatBackend(
 
         val userMsg = ChatMessage(
             id = UUID.randomUUID().toString(),
-            role = "user",
+            conversationId = current.id,
+            role = MessageRole.USER,
             content = content,
-            timestamp = System.currentTimeMillis()
+            createdAt = System.currentTimeMillis()
         )
         _messages.value = _messages.value + userMsg
 
         val assistantMsgId = UUID.randomUUID().toString()
         val assistantMsg = ChatMessage(
             id = assistantMsgId,
-            role = "assistant",
+            conversationId = current.id,
+            role = MessageRole.ASSISTANT,
             content = "Thinking...",
-            timestamp = System.currentTimeMillis()
+            createdAt = System.currentTimeMillis()
         )
         _messages.value = _messages.value + assistantMsg
         _isStreaming.value = true

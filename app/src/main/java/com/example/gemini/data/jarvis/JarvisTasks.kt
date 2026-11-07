@@ -221,6 +221,9 @@ object JarvisTasks {
                 val enum = AgyHubClient.resolveModelEnum(vm.agyBackend.modelOfChat(t.id))
                 hub.sendUserPrompt(t.id, PromptExpansion.expand(text), enum).getOrElse { return "Could not send: ${it.message}" }
             }
+            AgentKind.OPENCODE -> {
+                vm.opencodeBackend.sendMessage(PromptExpansion.expand(text))
+            }
         }
         val now = System.currentTimeMillis()
         put(t.copy(state = State.STARTING, turnAt = now, updatedAt = now, progressAt = now, seenRunning = false,
@@ -237,6 +240,7 @@ object JarvisTasks {
                 else ensureBackend(t.id).stopStreaming()
             }
             AgentKind.AGY -> hub.cancelCascadeInvocation(t.id).onFailure { return "Could not stop: ${it.message}" }
+            AgentKind.OPENCODE -> vm.opencodeBackend.stopStreaming()
         }
         if (!quiet) put(t.copy(state = State.STOPPED, updatedAt = System.currentTimeMillis(), note = "Stopped", reported = true))
         return "Stopped."
@@ -271,6 +275,7 @@ object JarvisTasks {
         val msgs = when (t.agent) {
             AgentKind.CLAUDE -> claudeBackends[t.id]?.messages?.value?.takeIf { it.isNotEmpty() } ?: runCatching { JarvisController.readChat(t.id) }.getOrDefault(emptyList())
             AgentKind.AGY -> runCatching { JarvisController.readChat(t.id) }.getOrDefault(emptyList())
+            AgentKind.OPENCODE -> vm.opencodeBackend.messages.value
         }
         val text = msgs.lastOrNull { it.role == MessageRole.ASSISTANT && it.content.isNotBlank() }?.content.orEmpty()
         return PromptExpansion.collapse(text).trim().let { if (it.length > max) "…" + it.takeLast(max) else it }
@@ -330,6 +335,7 @@ object JarvisTasks {
         AgentKind.CLAUDE -> claudeBackends[t.id]?.isCurrentChatActivelyRunning?.value == true ||
             (vm.currentConversation.value?.id == t.id && vm.claudeBackend.isCurrentChatActivelyRunning.value)
         AgentKind.AGY -> agyBusy(t.id)
+        AgentKind.OPENCODE -> vm.opencodeBackend.isStreaming.value
     }
 
     private fun agyBusy(id: String): Boolean {
