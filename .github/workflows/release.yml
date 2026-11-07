@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - master
+      - main
     paths:
       - 'version.json'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
