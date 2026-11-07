@@ -1,6 +1,6 @@
 {
-  "version_code": 120,
-  "version_name": "1.0.20",
+  "version_code": 121,
+  "version_name": "1.0.21",
   "min_supported_version_code": 1,
   "changelog": [
     "Added OpenCode as native 3rd agent mode (AndCode engine style)",
