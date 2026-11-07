@@ -382,6 +382,10 @@ object JarvisTasks {
                 needsApproval = running && agyPendingOf(t.id).isNotEmpty() ||
                     (vm.currentConversation.value?.id == t.id && vm.pendingApprovals.value.isNotEmpty())
             }
+            AgentKind.OPENCODE -> {
+                running = vm.opencodeBackend.isStreaming.value
+                sig = "${vm.opencodeBackend.messages.value.size}"
+            }
         }
         if (progressSig.put(t.id, sig) != sig) t = t.copy(progressAt = now)
         if (running && !t.seenRunning) t = t.copy(seenRunning = true)
