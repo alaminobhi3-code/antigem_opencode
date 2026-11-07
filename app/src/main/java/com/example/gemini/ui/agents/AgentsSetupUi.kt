@@ -63,13 +63,23 @@ private val AGENT_OPTIONS = listOf(
         "Anthropic's Claude Code CLI on this device: your Claude subscription or Anthropic Console account."
     ),
     AgentOption(
+        setOf(AgentKind.OPENCODE),
+        "OpenCode",
+        "Local open-source AI agent runtime on this device without cloud restrictions (AndCode style)."
+    ),
+    AgentOption(
+        setOf(AgentKind.AGY, AgentKind.CLAUDE, AgentKind.OPENCODE),
+        "All Agents (Antigravity, Claude, OpenCode)",
+        "Pick the agent for each new chat. All agents share workspace tools, status and terminal access."
+    ),
+    AgentOption(
         setOf(AgentKind.AGY, AgentKind.CLAUDE),
-        "Both",
-        "Pick the agent for each new chat. Both share the chat list, status and accounts."
+        "Antigravity & Claude Code",
+        "Pick between Antigravity and Claude Code for each new chat."
     )
 )
 
-/** Three choices: Antigravity, Claude Code, or both. */
+/** Agent selection choices: Antigravity, Claude Code, OpenCode, or combinations. */
 @Composable
 fun AgentSelector(selected: Set<AgentKind>, onSelect: (Set<AgentKind>) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -86,10 +96,16 @@ fun AgentSelector(selected: Set<AgentKind>, onSelect: (Set<AgentKind>) -> Unit, 
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (option.agents.size == 1) {
                         AgentMark(option.agents.first(), size = 40.dp)
-                    } else {
+                    } else if (option.agents.size == 2) {
                         Box(Modifier.size(width = 52.dp, height = 40.dp)) {
-                            AgentMark(AgentKind.AGY, size = 34.dp)
-                            AgentMark(AgentKind.CLAUDE, size = 34.dp, modifier = Modifier.offset(x = 18.dp, y = 6.dp))
+                            AgentMark(option.agents.elementAt(0), size = 34.dp)
+                            AgentMark(option.agents.elementAt(1), size = 34.dp, modifier = Modifier.offset(x = 18.dp, y = 6.dp))
+                        }
+                    } else {
+                        Box(Modifier.size(width = 62.dp, height = 40.dp)) {
+                            AgentMark(AgentKind.AGY, size = 30.dp)
+                            AgentMark(AgentKind.CLAUDE, size = 30.dp, modifier = Modifier.offset(x = 15.dp, y = 5.dp))
+                            AgentMark(AgentKind.OPENCODE, size = 30.dp, modifier = Modifier.offset(x = 30.dp, y = 0.dp))
                         }
                     }
                     Spacer(Modifier.width(12.dp))
