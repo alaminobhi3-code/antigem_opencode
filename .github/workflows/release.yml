@@ -3,9 +3,18 @@ name: Build & Publish Release
 on:
   push:
     branches:
-      - master
+      # Only main triggers a build: caches are branch-scoped, so a build from any
+      # other branch could not restore the keystore cache and would sign with a
+      # different key (breaking in-place app updates). master stays synced with
+      # main but never starts its own run.
       - main
   workflow_dispatch:
+
+# Serialize releases: parallel runs would each generate their own keystore on a
+# cache miss and sign the same release with different keys.
+concurrency:
+  group: release-build
+  cancel-in-progress: false
 
 permissions:
   contents: write
