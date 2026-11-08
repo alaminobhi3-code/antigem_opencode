@@ -219,7 +219,9 @@ object LocalServerManager {
         }
         val tzOffset = java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1000
 
-        val binParam = if (agyCmd.isNotBlank()) {
+        // only point the bridge at agy when the file really exists on the host: a missing
+        // custom path used to make the bridge exit immediately (IDE server never listened)
+        val binParam = if (agyCmd.isNotBlank() && agyExistsOnHost(context, agyCmd)) {
             " --bin \"$agyCmd\""
         } else {
             ""
@@ -235,6 +237,38 @@ object LocalServerManager {
         val agentFlags = com.example.gemini.data.agent.AgentPreferences.bridgeFlags(context)
 
         return "$bridgeCmd -f --token $token -p $bridgePort --hub-port $hubPort --tz-offset $tzOffset$binParam$claudeBinParam$agentFlags"
+    }
+
+    /**
+     * Host-side existence check for the AGY path. The bridge resolves this path inside its
+     * environment (ubuntu proot for the standard build, termux home for the termux build),
+     * so map it onto the host filesystem before checking.
+     */
+    private fun agyExistsOnHost(context: Context, path: String): Boolean = try {
+        val p = path.trim()
+        when {
+            p.isBlank() -> false
+            LocalEnvironmentManager.isTermuxPackage(context) -> when {
+                p.startsWith("~") -> File(
+                    LocalEnvironmentManager.getHomeDir(context),
+                    p.removePrefix("~").removePrefix("/")
+                ).exists()
+                p.startsWith("/") -> File(p).exists()
+                else -> File(LocalEnvironmentManager.getHomeDir(context), p).exists()
+            }
+            else -> {
+                // standard build: the bridge runs inside the ubuntu proot where HOME=/root
+                val root = LocalEnvironmentManager.getUbuntuRootDir(context)
+                val rel = when {
+                    p.startsWith("~/") -> "root/" + p.removePrefix("~/")
+                    p.startsWith("/") -> p.removePrefix("/")
+                    else -> "root/" + p
+                }
+                File(root, rel).exists()
+            }
+        }
+    } catch (_: Exception) {
+        false
     }
 
     /**

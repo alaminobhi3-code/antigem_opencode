@@ -1,12 +1,11 @@
 {
-  "version_code": 126,
-  "version_name": "1.0.26",
+  "version_code": 127,
+  "version_name": "1.0.27",
   "min_supported_version_code": 1,
   "changelog": [
-    "Fixed OpenCode chat still showing 'Unable to Load Chat' / 'Antigravity Hub unreachable' (bug in the v1.0.25 fix)",
-    "OpenCode chats now work fully offline, without the Antigravity hub",
-    "Stable release signing: future updates install over your app without wiping the setup",
-    "Coming from v1.0.23 or older? uninstall the old app once, then install this APK"
+    "Fixed the built-in server dying at startup: it no longer quits when the AGY (Antigravity) CLI is missing",
+    "MCP, terminal, files, git and OpenCode now work without the AGY CLI installed",
+    "The server only targets the AGY CLI when the file actually exists"
   ],
   "is_critical": false
 }

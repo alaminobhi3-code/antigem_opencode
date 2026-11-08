@@ -265,10 +265,11 @@ func main() {
 
 	resolvedAgyBin, err := hub.ResolveAgyBinaryInteractive(customAgyBin, forceStart || skipHub)
 	if customAgyBin != "" && err != nil {
-		fmt.Printf(" \033[1;31m✗ Fatal Error:\033[0m %v\n", err)
-		os.Exit(1)
-	}
-	if err != nil && !skipHub {
+		// A missing custom AGY path must not kill the IDE server: MCP/terminal/files/git
+		// keep working, and AGY/hub features report their own errors at call time.
+		fmt.Printf(" \033[1;33m[!] AGY binary not found:\033[0m %v (IDE server will start without AGY)\n", err)
+		resolvedAgyBin = ""
+	} else if err != nil && !skipHub {
 		fmt.Printf(" \033[31m[!] AGY Discovery Warning:\033[0m %v\n", err)
 	}
 
