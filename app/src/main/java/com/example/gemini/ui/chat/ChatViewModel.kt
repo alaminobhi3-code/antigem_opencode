@@ -149,10 +149,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val opencodeDefaultModelId = MutableStateFlow("opencode-default")
 
     private fun <T> byAgent(agy: StateFlow<T>, claude: StateFlow<T>, opencode: StateFlow<T>? = null): StateFlow<T> =
-        combine(store.currentConversation, agy, claude) { conv, a, c ->
+        combine(store.currentConversation, agy, claude, opencode ?: agy) { conv, a, c, o ->
             when (conv?.agent) {
                 AgentKind.CLAUDE -> c
-                AgentKind.OPENCODE -> opencode?.value ?: a
+                // `opencode != null` checks the flow itself: its value may legitimately be null
+                // (e.g. conversationError), and `opencode?.value ?: a` would wrongly fall back to AGY.
+                AgentKind.OPENCODE -> if (opencode != null) o else a
                 else -> a
             }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, agy.value)
