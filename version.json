@@ -1,11 +1,11 @@
 {
-  "version_code": 123,
-  "version_name": "1.0.23",
+  "version_code": 124,
+  "version_name": "1.0.24",
   "min_supported_version_code": 1,
   "changelog": [
-    "Added OpenCode as native 3rd agent mode (AndCode engine style)",
-    "Direct local OpenCode process integration without cloud proxy",
-    "OpenCode status UI and accent theming in AgentPicker"
+    "Fixed OpenCode chat showing 'Antigravity Hub unreachable' errors",
+    "OpenCode chats no longer depend on the Antigravity hub being online",
+    "Release keystore is now kept stable so updates no longer wipe your setup"
   ],
   "is_critical": false
 }

@@ -44,12 +44,20 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Cache release keystore (stable signature across builds)
+        uses: actions/cache@v4
+        with:
+          path: app/release.jks
+          key: release-keystore-v1
+
       - name: Restore Keystore from Secret or Generate Release Keystore
         run: |
           if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
             echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/release.jks
+          elif [ -f app/release.jks ]; then
+            echo "Using cached release.jks keystore (same signature as previous builds)"
           else
-            echo "Generating release.jks keystore..."
+            echo "Generating release.jks keystore (cached for future builds)..."
             keytool -genkeypair -v -keystore app/release.jks -alias antigem -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=AntiGem, OU=OpenCode, O=AntiGem, L=Global, S=Global, C=US"
           fi
           chmod +x gradlew scripts/build_all_apks.sh
